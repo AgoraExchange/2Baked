@@ -1,0 +1,130 @@
+name: Build and Deploy 2 Baked
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Generate Flutter web project
+        shell: bash
+        run: |
+          cp main.dart /tmp/two_baked_main.dart
+          cp app_icon.png /tmp/two_baked_icon.png
+          cp pubspec.yaml /tmp/two_baked_pubspec.yaml
+
+          flutter create --platforms=web --project-name=two_baked /tmp/two_baked_project
+
+          cp /tmp/two_baked_main.dart /tmp/two_baked_project/lib/main.dart
+          cp /tmp/two_baked_pubspec.yaml /tmp/two_baked_project/pubspec.yaml
+
+          mkdir -p /tmp/two_baked_project/assets
+          mkdir -p /tmp/two_baked_project/web/icons
+
+          cp /tmp/two_baked_icon.png /tmp/two_baked_project/assets/app_icon.png
+          cp /tmp/two_baked_icon.png /tmp/two_baked_project/web/icons/Icon-512.png
+          cp /tmp/two_baked_icon.png /tmp/two_baked_project/web/icons/Icon-192.png
+          cp /tmp/two_baked_icon.png /tmp/two_baked_project/web/icons/Icon-180.png
+          cp /tmp/two_baked_icon.png /tmp/two_baked_project/web/splash_logo.png
+
+          cat > /tmp/two_baked_project/web/manifest.json <<'EOF'
+          {
+            "name": "2 Baked",
+            "short_name": "2 Baked",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#07090D",
+            "theme_color": "#8D6BFF",
+            "description": "2 Baked dab timer PWA",
+            "orientation": "portrait-primary",
+            "icons": [
+              {"src":"icons/Icon-192.png","sizes":"192x192","type":"image/png"},
+              {"src":"icons/Icon-512.png","sizes":"512x512","type":"image/png"}
+            ]
+          }
+          EOF
+
+          cat > /tmp/two_baked_project/web/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <base href="$FLUTTER_BASE_HREF">
+            <meta charset="UTF-8">
+            <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+            <meta name="description" content="2 Baked dab timer PWA">
+            <meta name="theme-color" content="#07090D">
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+            <meta name="apple-mobile-web-app-title" content="2 Baked">
+            <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-180.png">
+            <link rel="icon" type="image/png" href="icons/Icon-192.png">
+            <link rel="manifest" href="manifest.json">
+            <title>2 Baked</title>
+            <style>
+              html,body{margin:0;width:100%;height:100%;background:#07090D;overflow:hidden}
+              #splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,#25105a 0%,#0d1023 35%,#07090d 75%);transition:opacity .45s ease}
+              #splash img{width:min(62vw,330px);border-radius:28%;filter:drop-shadow(0 0 28px rgba(141,107,255,.42))}
+              #splash .tag{color:#b8a7ff;font:700 14px system-ui;letter-spacing:.16em;margin-top:22px}
+              #splash .bar{width:150px;height:7px;margin-top:18px;border-radius:999px;background:#191d29;overflow:hidden}
+              #splash .bar:before{content:"";display:block;height:100%;width:45%;border-radius:999px;background:linear-gradient(90deg,#6cff5c,#8d6bff,#ff5bd6);animation:load 1.2s infinite ease-in-out}
+              @keyframes load{0%{transform:translateX(-110%)}100%{transform:translateX(330%)}}
+            </style>
+          </head>
+          <body>
+            <div id="splash">
+              <img src="splash_logo.png" alt="2 Baked">
+              <div class="tag">DAB • CHILL • REPEAT</div>
+              <div class="bar"></div>
+            </div>
+            <script>
+              window.addEventListener('flutter-first-frame',function(){
+                const s=document.getElementById('splash');
+                if(!s)return;
+                s.style.opacity='0';
+                setTimeout(()=>s.remove(),500);
+              });
+            </script>
+            <script src="flutter_bootstrap.js" async></script>
+          </body>
+          </html>
+          EOF
+
+      - name: Install packages
+        working-directory: /tmp/two_baked_project
+        run: flutter pub get
+
+      - name: Build web
+        working-directory: /tmp/two_baked_project
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/two_baked_project/build/web
+
+      - name: Deploy Pages
+        uses: actions/deploy-pages@v4
