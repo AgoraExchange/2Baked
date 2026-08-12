@@ -1,0 +1,29 @@
+2 BAKED — MOBILE GITHUB UPLOAD
+
+UPLOAD THESE 3 FILES TO THE ROOT OF YOUR GITHUB REPO:
+1. main.dart
+2. pubspec.yaml
+3. app_icon.png
+
+THEN CREATE ONE FILE DIRECTLY ON GITHUB:
+.github/workflows/deploy.yml
+
+Open deploy.yml.txt from this ZIP, copy all of it, and paste it into that new GitHub file.
+
+On GitHub mobile Safari:
+1. Open your repository.
+2. Add file -> Upload files.
+3. Upload main.dart, pubspec.yaml, and app_icon.png.
+4. Commit them to main.
+5. Tap Add file -> Create new file.
+6. For the filename type exactly:
+   .github/workflows/deploy.yml
+7. Paste everything from deploy.yml.txt.
+8. Commit it to main.
+9. Go to Settings -> Pages.
+10. Under Build and deployment, select GitHub Actions.
+
+After the workflow finishes, GitHub creates the entire Flutter web project automatically,
+builds the PWA, and publishes it.
+
+You never need to manually upload lib/, web/, assets/, or .github/ folders.
